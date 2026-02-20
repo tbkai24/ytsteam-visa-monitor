@@ -2,7 +2,6 @@ import { Navigate, createBrowserRouter } from 'react-router-dom'
 import PublicLayout from './components/layout/PublicLayout'
 import AdminLayout from './components/layout/AdminLayout'
 import { RequireAdmin } from './lib/auth'
-import About from './pages/About'
 import Embeds from './pages/Embeds'
 import Home from './pages/Home'
 import Milestones from './pages/Milestones'
@@ -20,7 +19,6 @@ export const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: 'milestones', element: <Milestones /> },
       { path: 'embeds', element: <Embeds /> },
-      { path: 'about', element: <About /> },
     ],
   },
   {

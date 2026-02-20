@@ -940,12 +940,12 @@ p {
 .admin-brand-wrap {
   padding: 1.3rem 1.5rem;
   border-bottom: 1px solid #1f2438;
+  display: grid;
+  gap: 0.6rem;
 }
 
-.admin-brand {
-  font-size: 2.05rem;
-  letter-spacing: 0.08em;
-  font-weight: 700;
+.admin-brand-row {
+  width: fit-content;
 }
 
 .admin-brand-sub {
@@ -1195,6 +1195,36 @@ p {
 
 .table-wrap {
   overflow-x: auto;
+}
+
+.admin-embeds-wrap {
+  overflow-x: auto;
+}
+
+.admin-embeds-table {
+  min-width: 1120px;
+}
+
+.admin-embeds-table th,
+.admin-embeds-table td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.admin-embed-label-text {
+  display: inline-block;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.admin-embed-url-text {
+  display: inline-block;
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
 .embed-suggest-card {

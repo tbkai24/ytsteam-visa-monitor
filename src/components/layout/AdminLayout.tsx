@@ -24,6 +24,7 @@ function AdminLayout() {
   const navigate = useNavigate()
   const { session } = useAuth()
   const [websiteName, setWebsiteName] = useState('TEAM9')
+  const [logoUrl, setLogoUrl] = useState('')
   const [footerText, setFooterText] = useState('')
   const [xUrl, setXUrl] = useState('#')
   const [facebookUrl, setFacebookUrl] = useState('#')
@@ -34,12 +35,13 @@ function AdminLayout() {
     const loadBrand = async () => {
       const { data } = await supabase
         .from('app_settings')
-        .select('website_name, footer_text, x_url, facebook_url, instagram_url')
+        .select('*')
         .eq('id', 1)
         .maybeSingle()
       if (data) {
         const row = data as {
           website_name?: string
+          logo_url?: string
           footer_text?: string
           x_url?: string
           facebook_url?: string
@@ -47,6 +49,7 @@ function AdminLayout() {
         }
         const nextName = (row.website_name ?? '').trim()
         if (nextName) setWebsiteName(nextName)
+        setLogoUrl((row.logo_url ?? '').trim())
         setFooterText((row.footer_text ?? '').trim())
         setXUrl((row.x_url ?? '#').trim() || '#')
         setFacebookUrl((row.facebook_url ?? '#').trim() || '#')
@@ -68,7 +71,14 @@ function AdminLayout() {
       <div className="admin-shell">
         <aside className={sidebarOpen ? 'admin-sidebar open' : 'admin-sidebar'}>
           <div className="admin-brand-wrap">
-            <div className="admin-brand">{websiteName}</div>
+            <div className="public-brand-wrap admin-brand-row">
+              {logoUrl ? (
+                <img src={logoUrl} alt={websiteName} className="public-logo" />
+              ) : (
+                <span className="public-brand-mark">o</span>
+              )}
+              <div className={logoUrl ? 'brand brand-compact' : 'brand'}>{websiteName}</div>
+            </div>
             <p className="admin-brand-sub">Admin Panel</p>
           </div>
           <nav className="admin-nav">

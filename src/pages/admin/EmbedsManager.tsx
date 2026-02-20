@@ -236,25 +236,6 @@ function EmbedsManager() {
     await loadEmbeds()
   }
 
-  const toggleEmbed = async (row: EmbedRow) => {
-    setSaving(true)
-    setError(null)
-
-    const { error: updateError } = await supabase
-      .from('embeds')
-      .update({ embed_enabled: !row.embed_enabled })
-      .eq('id', row.id)
-
-    if (updateError) {
-      setError(updateError.message)
-      setSaving(false)
-      return
-    }
-
-    setSaving(false)
-    await loadEmbeds()
-  }
-
   const deleteRow = async (id: string) => {
     setSaving(true)
     setError(null)
@@ -355,30 +336,29 @@ function EmbedsManager() {
         </Card>
       ) : null}
 
-      <Card className="admin-glass-card">
-        <table className="table admin-table">
+      <Card className="admin-glass-card table-wrap admin-embeds-wrap">
+        <table className="table admin-table admin-embeds-table">
           <thead>
             <tr>
               <th>Order</th>
-              <th>Label</th>
-              <th>URL</th>
               <th>Thumbnail</th>
+              <th>Name</th>
+              <th>URL</th>
               <th>Active</th>
-              <th>Embed</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="muted">
+                <td colSpan={6} className="muted">
                   Loading embeds...
                 </td>
               </tr>
             ) : null}
             {!loading && sortedRows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="muted">
+                <td colSpan={6} className="muted">
                   No embeds yet.
                 </td>
               </tr>
@@ -393,24 +373,24 @@ function EmbedsManager() {
                       </div>
                     </td>
                     <td>
+                      {row.thumbnail_url ? (
+                        <img src={row.thumbnail_url} alt={row.label} className="embed-suggest-thumb" />
+                      ) : (
+                        <span className="muted">No image</span>
+                      )}
+                    </td>
+                    <td>
                       {editingId === row.id ? (
                         <Input value={editLabel} onChange={(event) => setEditLabel(event.target.value)} />
                       ) : (
-                        <strong>{row.label}</strong>
+                        <strong className="admin-embed-label-text">{row.label}</strong>
                       )}
                     </td>
                     <td>
                       {editingId === row.id ? (
                         <Input value={editUrl} onChange={(event) => setEditUrl(event.target.value)} />
                       ) : (
-                        row.url
-                      )}
-                    </td>
-                    <td>
-                      {row.thumbnail_url ? (
-                        <img src={row.thumbnail_url} alt={row.label} className="embed-suggest-thumb" />
-                      ) : (
-                        <span className="muted">No image</span>
+                        <span className="admin-embed-url-text">{row.url}</span>
                       )}
                     </td>
                     <td>
@@ -420,17 +400,6 @@ function EmbedsManager() {
                         onClick={() => toggleActive(row)}
                         disabled={saving}
                         aria-label={`Toggle active for ${row.label}`}
-                      >
-                        <span />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className={`switch ${row.embed_enabled ? 'on' : ''}`}
-                        onClick={() => toggleEmbed(row)}
-                        disabled={saving}
-                        aria-label={`Toggle embed for ${row.label}`}
                       >
                         <span />
                       </button>

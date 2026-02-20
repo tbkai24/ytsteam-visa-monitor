@@ -6,7 +6,6 @@ const links = [
   { to: '/', label: 'Homepage' },
   { to: '/milestones', label: 'Milestones' },
   { to: '/embeds', label: 'Embeds' },
-  { to: '/about', label: 'About' },
 ]
 
 function Navbar() {

@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import AnimatedCounter from '../components/ui/AnimatedCounter'
 import { useNavigate } from 'react-router-dom'
+import Button from '../components/ui/Button'
 import { supabase } from '../lib/supabase'
 
 type MilestoneRow = {
@@ -49,7 +50,7 @@ function Home() {
   const [milestones, setMilestones] = useState<MilestoneRow[]>([])
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [dismissedCongrats, setDismissedCongrats] = useState<number[]>([])
+  const [dismissedCongratsTargets, setDismissedCongratsTargets] = useState<number[]>([])
   const [nowTick, setNowTick] = useState(() => Date.now())
   const [hoveredChartIndex, setHoveredChartIndex] = useState<number | null>(null)
 
@@ -106,6 +107,19 @@ function Home() {
     }
 
     void loadStatic()
+  }, [])
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('dismissed-congrats-targets')
+      if (!raw) return
+      const parsed = JSON.parse(raw) as number[]
+      if (Array.isArray(parsed)) {
+        setDismissedCongratsTargets(parsed.filter((value) => Number.isFinite(value)))
+      }
+    } catch {
+      // ignore malformed storage
+    }
   }, [])
 
   const enabledRanges = useMemo(() => rangeOptions, [])
@@ -280,18 +294,37 @@ function Home() {
     () => milestones.find((row) => currentViews < row.target_count) ?? null,
     [currentViews, milestones],
   )
-  const latestReachedMilestone = useMemo(() => {
-    if (!latest || milestones.length === 0) return null
-    const latestViews = latest.views ?? 0
-    const prevViews = previous?.views ?? 0
-    return (
-      milestones
-        .filter((row) => prevViews < row.target_count && latestViews >= row.target_count)
-        .sort((a, b) => b.target_count - a.target_count)[0] ?? null
-    )
-  }, [latest, milestones, previous])
-  const showCongratsCard =
-    latestReachedMilestone && !dismissedCongrats.includes(latestReachedMilestone.target_count)
+  const recentlyReachedMilestone = useMemo(() => {
+    if (milestones.length === 0 || snapshots.length < 2) return null
+    const cutoff = Date.now() - 60 * 60 * 1000
+    let found:
+      | {
+          milestone: MilestoneRow
+          reachedAt: string
+        }
+      | null = null
+
+    for (let i = 1; i < snapshots.length; i += 1) {
+      const prevViews = snapshots[i - 1].views ?? 0
+      const currViews = snapshots[i].views ?? 0
+      const reachedAtTime = new Date(snapshots[i].captured_at).getTime()
+      if (reachedAtTime < cutoff) continue
+
+      for (const milestone of milestones) {
+        if (prevViews < milestone.target_count && currViews >= milestone.target_count) {
+          if (!found || milestone.target_count > found.milestone.target_count) {
+            found = { milestone, reachedAt: snapshots[i].captured_at }
+          }
+        }
+      }
+    }
+
+    return found
+  }, [milestones, snapshots])
+
+  const showCongratsModal =
+    recentlyReachedMilestone &&
+    !dismissedCongratsTargets.includes(recentlyReachedMilestone.milestone.target_count)
 
   const heroImage = (settings?.hero_image_url ?? '').trim()
   const heroCoverImage = heroImage
@@ -303,25 +336,41 @@ function Home() {
 
   return (
     <div className="public-stack">
-      {showCongratsCard ? (
-        <div className="congrats-wrap">
-          <button type="button" className="congrats-card" onClick={() => navigate('/milestones')}>
-            <span className="congrats-label">Congratulations A&apos;TIN!</span>
-            <span className="congrats-text">
-              Reached {latestReachedMilestone?.target_count.toLocaleString()} views. Tap to celebrate milestones.
-            </span>
-          </button>
-          <button
-            type="button"
-            className="congrats-close"
-            aria-label="Close congratulation card"
-            onClick={() =>
-              latestReachedMilestone &&
-              setDismissedCongrats((prev) => [...prev, latestReachedMilestone.target_count])
-            }
-          >
-            x
-          </button>
+      {showCongratsModal ? (
+        <div className="congrats-modal-backdrop">
+          <div className="congrats-modal">
+            <div className="congrats-emoji" aria-hidden>🎉</div>
+            <h2>Congratulations A&apos;TIN!</h2>
+            <p className="congrats-subtitle">SB19 &quot;VISA&quot; has reached</p>
+            <p className="congrats-value">
+              {recentlyReachedMilestone?.milestone.target_count.toLocaleString()}
+            </p>
+            <p className="congrats-subtitle">VIEWS</p>
+            <p className="congrats-copy">Thank you for streaming and supporting!</p>
+            <div className="button-row congrats-primary-row">
+              <Button type="button" onClick={() => navigate('/milestones')}>
+                View Milestones
+              </Button>
+            </div>
+            <div className="button-row congrats-close-row">
+              <Button
+                type="button"
+                variant="ghost"
+                className="congrats-close-btn"
+                onClick={() => {
+                  if (!recentlyReachedMilestone) return
+                  const next = [
+                    ...dismissedCongratsTargets,
+                    recentlyReachedMilestone.milestone.target_count,
+                  ]
+                  setDismissedCongratsTargets(next)
+                  window.localStorage.setItem('dismissed-congrats-targets', JSON.stringify(next))
+                }}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
         </div>
       ) : null}
       <section className="public-hero">

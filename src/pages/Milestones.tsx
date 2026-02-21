@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import Button from '../components/ui/Button'
 
 type Milestone = {
   id: string
@@ -20,6 +21,11 @@ function Milestones() {
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([])
   const [displayViews, setDisplayViews] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [selectedAchievedMilestone, setSelectedAchievedMilestone] = useState<{
+    title: string
+    target: number
+    achievedAt: string
+  } | null>(null)
 
   const loadSnapshots = useCallback(async () => {
     const { data, error: fetchError } = await supabase
@@ -148,6 +154,31 @@ function Milestones() {
 
   return (
     <div className="public-stack">
+      {selectedAchievedMilestone ? (
+        <div className="congrats-modal-backdrop">
+          <div className="congrats-modal">
+            <div className="congrats-emoji" aria-hidden>🎉</div>
+            <h2>Congratulations A&apos;TIN!</h2>
+            <p className="congrats-subtitle">{selectedAchievedMilestone.title} has reached</p>
+            <p className="congrats-value">{selectedAchievedMilestone.target.toLocaleString()}</p>
+            <p className="congrats-subtitle">VIEWS</p>
+            <p className="congrats-copy">
+              Achieved {formatAchievedDateTime(selectedAchievedMilestone.achievedAt)}
+            </p>
+            <div className="button-row congrats-close-row">
+              <Button
+                type="button"
+                variant="ghost"
+                className="congrats-close-btn"
+                onClick={() => setSelectedAchievedMilestone(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <section className="public-hero public-hero-small">
         <h1>Milestones</h1>
         <p>Track progress and celebrate achievements</p>
@@ -170,7 +201,34 @@ function Milestones() {
           const remaining = Math.max(0, item.target_count - currentViews)
 
           return (
-            <article className="public-milestone-card" key={item.id}>
+            <article
+              className={`public-milestone-card ${achieved ? 'clickable' : ''}`}
+              key={item.id}
+              role={achieved ? 'button' : undefined}
+              tabIndex={achieved ? 0 : -1}
+              onClick={() => {
+                if (!achieved) return
+                const hit = achievedAtByTarget.get(item.target_count)
+                if (!hit) return
+                setSelectedAchievedMilestone({
+                  title: item.title,
+                  target: item.target_count,
+                  achievedAt: hit,
+                })
+              }}
+              onKeyDown={(event) => {
+                if (!achieved) return
+                if (event.key !== 'Enter' && event.key !== ' ') return
+                event.preventDefault()
+                const hit = achievedAtByTarget.get(item.target_count)
+                if (!hit) return
+                setSelectedAchievedMilestone({
+                  title: item.title,
+                  target: item.target_count,
+                  achievedAt: hit,
+                })
+              }}
+            >
               <div className="public-badge">
                 {item.target_count >= 1000000 ? `${item.target_count / 1000000}M` : `${Math.floor(item.target_count / 1000)}K`}
               </div>

@@ -200,6 +200,83 @@ p {
   align-items: center;
 }
 
+.congrats-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background:
+    radial-gradient(900px 500px at 50% 10%, rgba(255, 206, 112, 0.12), transparent),
+    radial-gradient(800px 400px at 50% 90%, rgba(118, 76, 255, 0.18), transparent),
+    rgba(3, 4, 12, 0.8);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.congrats-modal {
+  width: min(680px, 100%);
+  border: 1px solid #3a3f67;
+  border-radius: 22px;
+  padding: 1.45rem 1.2rem;
+  text-align: center;
+  background:
+    radial-gradient(120% 140% at 50% -10%, rgba(133, 110, 255, 0.2), transparent),
+    radial-gradient(120% 140% at 50% 110%, rgba(255, 162, 122, 0.14), transparent),
+    rgba(8, 10, 27, 0.95);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.congrats-emoji {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.congrats-modal h2 {
+  font-size: clamp(1.8rem, 5vw, 3rem);
+}
+
+.congrats-subtitle {
+  color: #b6bedb;
+  font-size: clamp(1rem, 2.7vw, 1.45rem);
+}
+
+.congrats-value {
+  margin: 0.35rem 0 0;
+  font-size: clamp(2.3rem, 8.2vw, 5.2rem);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.congrats-copy {
+  color: #d5d9ee;
+  font-size: clamp(1rem, 2.4vw, 1.5rem);
+  margin-top: 0.25rem;
+}
+
+.congrats-primary-row,
+.congrats-close-row {
+  justify-content: center;
+}
+
+.congrats-close-btn {
+  min-width: 180px;
+  border: 1px solid #4c5583;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(40, 45, 76, 0.92), rgba(22, 27, 50, 0.92));
+  color: #f1f4ff;
+}
+
+.congrats-close-btn:hover {
+  border-color: #6672a8;
+  background: linear-gradient(180deg, rgba(49, 56, 93, 0.95), rgba(28, 34, 62, 0.95));
+}
+
 .congrats-card {
   text-align: left;
   border: 1px solid #2f3b67;
@@ -631,6 +708,15 @@ p {
   grid-template-columns: 120px 1fr auto;
   gap: 0.9rem;
   align-items: center;
+}
+
+.public-milestone-card.clickable {
+  cursor: pointer;
+}
+
+.public-milestone-card.clickable:hover {
+  border-color: #4d5fa8;
+  box-shadow: 0 0 0 1px rgba(126, 148, 255, 0.22), inset 0 0 0 1px rgba(62, 89, 177, 0.08);
 }
 
 .public-badge {

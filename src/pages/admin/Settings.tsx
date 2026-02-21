@@ -8,6 +8,8 @@ type AppSettingsRow = {
   id: number
   hero_title?: string | null
   hero_subtitle?: string | null
+  embeds_title?: string | null
+  embeds_subtitle?: string | null
   website_name?: string | null
   logo_url?: string | null
   footer_text?: string | null
@@ -23,6 +25,8 @@ function Settings() {
   const [notice, setNotice] = useState<string | null>(null)
   const [heroTitle, setHeroTitle] = useState('')
   const [heroSubtitle, setHeroSubtitle] = useState('')
+  const [embedsTitle, setEmbedsTitle] = useState('')
+  const [embedsSubtitle, setEmbedsSubtitle] = useState('')
   const [websiteName, setWebsiteName] = useState('TEAM9')
   const [logoUrl, setLogoUrl] = useState('')
   const [footerText, setFooterText] = useState('')
@@ -51,6 +55,8 @@ function Settings() {
       const row = data as AppSettingsRow
       setHeroTitle((row.hero_title ?? '').trim())
       setHeroSubtitle((row.hero_subtitle ?? '').trim())
+      setEmbedsTitle((row.embeds_title ?? '').trim())
+      setEmbedsSubtitle((row.embeds_subtitle ?? '').trim())
       setWebsiteName((row.website_name ?? 'TEAM9').trim())
       setLogoUrl((row.logo_url ?? '').trim())
       setFooterText((row.footer_text ?? '').trim())
@@ -75,6 +81,8 @@ function Settings() {
       id: 1,
       hero_title: heroTitle.trim() || null,
       hero_subtitle: heroSubtitle.trim() || null,
+      embeds_title: embedsTitle.trim() || null,
+      embeds_subtitle: embedsSubtitle.trim() || null,
       website_name: websiteName.trim() || 'TEAM9',
       logo_url: logoUrl.trim() || null,
       footer_text: footerText.trim() || null,
@@ -89,13 +97,15 @@ function Settings() {
       if (
         upsertError.message.includes('website_name') ||
         upsertError.message.includes('logo_url') ||
+        upsertError.message.includes('embeds_title') ||
+        upsertError.message.includes('embeds_subtitle') ||
         upsertError.message.includes('footer_text') ||
         upsertError.message.includes('x_url') ||
         upsertError.message.includes('facebook_url') ||
         upsertError.message.includes('instagram_url')
       ) {
         setError(
-          'Missing app_settings columns. Add website_name, logo_url, footer_text, x_url, facebook_url, instagram_url, then save again.',
+          'Missing app_settings columns. Add website_name, logo_url, embeds_title, embeds_subtitle, footer_text, x_url, facebook_url, instagram_url, then save again.',
         )
       } else {
         setError(upsertError.message)
@@ -117,8 +127,8 @@ function Settings() {
         </div>
       </div>
 
-      {error ? <p className="error-text">{error}</p> : null}
-      {notice ? <p className="muted">{notice}</p> : null}
+      {error ? <p className="alert alert-error">{error}</p> : null}
+      {notice ? <p className="alert alert-success">{notice}</p> : null}
 
       <Card className="admin-glass-card settings-card">
         {loading ? <p className="muted">Loading settings...</p> : null}
@@ -139,6 +149,15 @@ function Settings() {
             <label className="stack-xs">
               <span className="muted">Hero Subtitle (optional)</span>
               <Input value={heroSubtitle} onChange={(event) => setHeroSubtitle(event.target.value)} />
+            </label>
+            <hr className="admin-divider" />
+            <label className="stack-xs">
+              <span className="muted">Embeds Page Title (optional)</span>
+              <Input value={embedsTitle} onChange={(event) => setEmbedsTitle(event.target.value)} />
+            </label>
+            <label className="stack-xs">
+              <span className="muted">Embeds Page Subtitle (optional)</span>
+              <Input value={embedsSubtitle} onChange={(event) => setEmbedsSubtitle(event.target.value)} />
             </label>
             <hr className="admin-divider" />
             <label className="stack-xs">

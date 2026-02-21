@@ -151,7 +151,7 @@ function Milestones() {
       <section className="public-hero public-hero-small">
         <h1>Milestones</h1>
         <p>Track progress and celebrate achievements</p>
-        {error ? <p className="error-text">{error}</p> : null}
+        {error ? <p className="alert alert-error">{error}</p> : null}
         <div className="public-current">Current Views: {currentViews.toLocaleString()}</div>
         <div className="live-row">
           <span className="live-badge">LIVE</span>

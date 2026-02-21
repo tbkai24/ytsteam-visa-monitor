@@ -95,7 +95,7 @@ function AdminLogin() {
               autoComplete="current-password"
             />
           </label>
-          {error ? <p className="error-text">{error}</p> : null}
+          {error ? <p className="alert alert-error">{error}</p> : null}
           <Button type="submit" disabled={submitting}>
             {submitting ? 'Signing In...' : 'Sign In'}
           </Button>

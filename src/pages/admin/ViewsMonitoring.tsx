@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
 import Input from '../../components/ui/Input'
@@ -37,6 +37,7 @@ function ViewsMonitoring() {
   const [snapshotViewsPerHour, setSnapshotViewsPerHour] = useState('')
   const [snapshotCapturedAt, setSnapshotCapturedAt] = useState('')
   const [recentRows, setRecentRows] = useState<MonitoringSnapshot[]>([])
+  const [allRows, setAllRows] = useState<MonitoringSnapshot[]>([])
   const [recentLoading, setRecentLoading] = useState(false)
 
   const loadSettings = useCallback(async () => {
@@ -72,8 +73,8 @@ function ViewsMonitoring() {
     const { data, error: fetchError } = await supabase
       .from('monitoring_snapshots')
       .select('captured_at,views,likes,comments,views_per_hour')
-      .order('captured_at', { ascending: false })
-      .limit(20)
+      .order('captured_at', { ascending: true })
+      .limit(6000)
 
     if (fetchError) {
       setError(
@@ -83,7 +84,9 @@ function ViewsMonitoring() {
       return
     }
 
-    setRecentRows((data ?? []) as MonitoringSnapshot[])
+    const ordered = (data ?? []) as MonitoringSnapshot[]
+    setAllRows(ordered)
+    setRecentRows([...ordered].slice(-20).reverse())
     setRecentLoading(false)
   }, [])
 
@@ -231,6 +234,81 @@ function ViewsMonitoring() {
     setSaving(false)
   }
 
+  const estimateRatePerSecond = (rows: Array<{ captured_at: string; views: number }>) => {
+    if (rows.length < 2) return 0
+    const latest = rows[rows.length - 1]
+    const previous = rows[rows.length - 2]
+    const liveDeltaViews = latest.views - previous.views
+    const liveDeltaSeconds = Math.max(
+      1,
+      (new Date(latest.captured_at).getTime() - new Date(previous.captured_at).getTime()) / 1000,
+    )
+    const liveRate = Math.max(0, liveDeltaViews / liveDeltaSeconds)
+    if (liveRate > 0) return liveRate
+
+    for (let i = rows.length - 1; i > 0; i -= 1) {
+      const current = rows[i]
+      const prev = rows[i - 1]
+      const deltaViews = current.views - prev.views
+      const deltaSeconds = Math.max(
+        1,
+        (new Date(current.captured_at).getTime() - new Date(prev.captured_at).getTime()) / 1000,
+      )
+      if (deltaViews > 0) return deltaViews / deltaSeconds
+    }
+    return 0
+  }
+
+  const formatEtaFromRate = (remainingViews: number, ratePerSecond: number) => {
+    if (ratePerSecond <= 0) return 'ETA: waiting update'
+    const seconds = Math.ceil(remainingViews / ratePerSecond)
+    if (seconds < 60) return `ETA: ${seconds}s`
+    if (seconds < 3600) return `ETA: ${Math.ceil(seconds / 60)}m`
+    if (seconds < 86400) return `ETA: ${(seconds / 3600).toFixed(1)}h`
+    return `ETA: ${(seconds / 86400).toFixed(1)}d`
+  }
+
+  const hundredKRows = useMemo(() => {
+    const valid = allRows
+      .map((row) => ({ ...row, views: row.views ?? 0 }))
+      .filter((row) => Number.isFinite(row.views))
+
+    if (valid.length === 0) return []
+
+    const maxViews = valid.reduce((max, row) => Math.max(max, row.views), 0)
+    if (maxViews < 100000) return []
+
+    const targets: number[] = []
+    for (let target = 100000; target <= maxViews; target += 100000) {
+      targets.push(target)
+    }
+
+    return targets
+      .map((target) => {
+        const crossIndex = valid.findIndex((row, index) => {
+          const prevViews = index > 0 ? valid[index - 1].views : 0
+          return prevViews < target && row.views >= target
+        })
+
+        if (crossIndex < 0) return null
+
+        const reached = valid[crossIndex]
+        const prev = crossIndex > 0 ? valid[crossIndex - 1] : null
+        const historyUntilPrev = valid.slice(0, crossIndex)
+        const ratePerSecond = estimateRatePerSecond(historyUntilPrev)
+        const remaining = Math.max(0, target - (prev?.views ?? reached.views))
+
+        return {
+          target,
+          reachedAt: reached.captured_at,
+          reachedViews: reached.views,
+          etaText: remaining <= 0 ? 'Reached' : formatEtaFromRate(remaining, ratePerSecond),
+        }
+      })
+      .filter((row): row is { target: number; reachedAt: string; reachedViews: number; etaText: string } => row !== null)
+      .sort((a, b) => b.target - a.target)
+  }, [allRows])
+
   return (
     <div className="stack-md">
       <div className="admin-heading-row">
@@ -240,8 +318,8 @@ function ViewsMonitoring() {
         </div>
       </div>
 
-      {error ? <p className="error-text">{error}</p> : null}
-      {notice ? <p className="muted">{notice}</p> : null}
+      {error ? <p className="alert alert-error">{error}</p> : null}
+      {notice ? <p className="alert alert-success">{notice}</p> : null}
 
       <Card className="admin-glass-card settings-card">
         {loading ? <p className="muted">Loading monitoring settings...</p> : null}
@@ -354,6 +432,48 @@ function ViewsMonitoring() {
                 <Button type="button" onClick={handleInsertSnapshot} disabled={saving}>
                   {saving ? 'Saving...' : 'Add Snapshot'}
                 </Button>
+              </div>
+            </div>
+
+            <div className="stack-sm">
+              <h3>100k Reach Log</h3>
+              <div className="table-wrap">
+                <table className="table admin-table">
+                  <thead>
+                    <tr>
+                      <th>Target</th>
+                      <th>Reached At</th>
+                      <th>ETA (pre-hit)</th>
+                      <th>Views at Capture</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentLoading ? (
+                      <tr>
+                        <td colSpan={4} className="muted">
+                          Computing 100k reach log...
+                        </td>
+                      </tr>
+                    ) : null}
+                    {!recentLoading && hundredKRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="muted">
+                          No 100k milestones reached yet.
+                        </td>
+                      </tr>
+                    ) : null}
+                    {!recentLoading
+                      ? hundredKRows.map((row) => (
+                          <tr key={`100k-${row.target}`}>
+                            <td>{row.target.toLocaleString()}</td>
+                            <td>{new Date(row.reachedAt).toLocaleString()}</td>
+                            <td>{row.etaText}</td>
+                            <td>{row.reachedViews.toLocaleString()}</td>
+                          </tr>
+                        ))
+                      : null}
+                  </tbody>
+                </table>
               </div>
             </div>
 

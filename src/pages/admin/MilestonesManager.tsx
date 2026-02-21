@@ -162,7 +162,7 @@ function MilestonesManager() {
         </Button>
       </div>
 
-      {error ? <p className="error-text">{error}</p> : null}
+      {error ? <p className="alert alert-error">{error}</p> : null}
 
       {showForm ? (
         <Card className="admin-glass-card">
@@ -186,8 +186,8 @@ function MilestonesManager() {
         </Card>
       ) : null}
 
-      <Card className="admin-glass-card">
-        <table className="table admin-table">
+      <Card className="admin-glass-card table-wrap admin-milestones-wrap">
+        <table className="table admin-table admin-milestones-table">
           <thead>
             <tr>
               <th>Order</th>

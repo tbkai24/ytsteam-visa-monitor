@@ -335,7 +335,7 @@ function Home() {
         </div>
         <h1>{settings?.hero_title ?? "SB19 - 'VISA' (Official MV)"}</h1>
         {settings?.hero_subtitle ? <p className="muted">{settings.hero_subtitle}</p> : null}
-        {error ? <p className="error-text">{error}</p> : null}
+        {error ? <p className="alert alert-error">{error}</p> : null}
         <div className="public-total-wrap">
           <AnimatedCounter value={currentViews} durationMs={1200} className="public-total" />
         </div>
@@ -381,88 +381,90 @@ function Home() {
             <h3>Views</h3>
             <span className="pill">Last 2 hours</span>
           </div>
-          <div className="public-line-chart-wrap">
-            {chartModel ? (
-              <>
-                <div className="public-chart-y-axis">
-                  {chartModel.yTicks.map((tick) => (
-                    <span key={`${tick.y}-${tick.value}`}>{tick.value.toLocaleString()}</span>
-                  ))}
-                </div>
-                <div
-                  className="public-line-chart"
-                  onMouseMove={(event) => {
-                    if (!chartModel.points.length) return
-                    const rect = event.currentTarget.getBoundingClientRect()
-                    const xPercent = ((event.clientX - rect.left) / rect.width) * 100
-                    let nearest = chartModel.points[0]
-                    for (const point of chartModel.points) {
-                      if (Math.abs(point.x - xPercent) < Math.abs(nearest.x - xPercent)) {
-                        nearest = point
-                      }
-                    }
-                    setHoveredChartIndex(nearest.index)
-                  }}
-                  onMouseLeave={() => setHoveredChartIndex(null)}
-                >
-                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <div className="public-chart-scroll">
+            <div className="public-line-chart-wrap">
+              {chartModel ? (
+                <>
+                  <div className="public-chart-y-axis">
                     {chartModel.yTicks.map((tick) => (
-                      <line key={`y-${tick.y}`} x1={0} y1={tick.y} x2={100} y2={tick.y} className="public-chart-grid-line" />
+                      <span key={`${tick.y}-${tick.value}`}>{tick.value.toLocaleString()}</span>
                     ))}
-                    {chartModel.xTicks.map((tick) => (
-                      <line key={`x-${tick.x}`} x1={tick.x} y1={0} x2={tick.x} y2={100} className="public-chart-grid-line" />
-                    ))}
-                    <path
-                      d={chartModel.areaPath}
-                      className={`public-chart-area ${chartModel.trend === 'down' ? 'down' : 'up'}`}
-                    />
-                    <path
-                      d={chartModel.linePath}
-                      className={`public-chart-line ${chartModel.trend === 'down' ? 'down' : 'up'}`}
-                    />
+                  </div>
+                  <div
+                    className="public-line-chart"
+                    onMouseMove={(event) => {
+                      if (!chartModel.points.length) return
+                      const rect = event.currentTarget.getBoundingClientRect()
+                      const xPercent = ((event.clientX - rect.left) / rect.width) * 100
+                      let nearest = chartModel.points[0]
+                      for (const point of chartModel.points) {
+                        if (Math.abs(point.x - xPercent) < Math.abs(nearest.x - xPercent)) {
+                          nearest = point
+                        }
+                      }
+                      setHoveredChartIndex(nearest.index)
+                    }}
+                    onMouseLeave={() => setHoveredChartIndex(null)}
+                  >
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                      {chartModel.yTicks.map((tick) => (
+                        <line key={`y-${tick.y}`} x1={0} y1={tick.y} x2={100} y2={tick.y} className="public-chart-grid-line" />
+                      ))}
+                      {chartModel.xTicks.map((tick) => (
+                        <line key={`x-${tick.x}`} x1={tick.x} y1={0} x2={tick.x} y2={100} className="public-chart-grid-line" />
+                      ))}
+                      <path
+                        d={chartModel.areaPath}
+                        className={`public-chart-area ${chartModel.trend === 'down' ? 'down' : 'up'}`}
+                      />
+                      <path
+                        d={chartModel.linePath}
+                        className={`public-chart-line ${chartModel.trend === 'down' ? 'down' : 'up'}`}
+                      />
+                      {hoveredChartIndex !== null ? (
+                        <>
+                          <line
+                            x1={chartModel.points[hoveredChartIndex]?.x ?? 0}
+                            y1={0}
+                            x2={chartModel.points[hoveredChartIndex]?.x ?? 0}
+                            y2={100}
+                            className="public-chart-hover-line"
+                          />
+                          <circle
+                            cx={chartModel.points[hoveredChartIndex]?.x ?? 0}
+                            cy={chartModel.points[hoveredChartIndex]?.y ?? 0}
+                            r={1.8}
+                            className="public-chart-hover-dot"
+                          />
+                        </>
+                      ) : null}
+                    </svg>
                     {hoveredChartIndex !== null ? (
-                      <>
-                        <line
-                          x1={chartModel.points[hoveredChartIndex]?.x ?? 0}
-                          y1={0}
-                          x2={chartModel.points[hoveredChartIndex]?.x ?? 0}
-                          y2={100}
-                          className="public-chart-hover-line"
-                        />
-                        <circle
-                          cx={chartModel.points[hoveredChartIndex]?.x ?? 0}
-                          cy={chartModel.points[hoveredChartIndex]?.y ?? 0}
-                          r={1.8}
-                          className="public-chart-hover-dot"
-                        />
-                      </>
+                      <div
+                        className="public-chart-tooltip"
+                        style={{
+                          left: `${chartModel.points[hoveredChartIndex]?.x ?? 0}%`,
+                          top: `${Math.max(6, (chartModel.points[hoveredChartIndex]?.y ?? 0) - 8)}%`,
+                        }}
+                      >
+                        <span>{new Date(chartModel.points[hoveredChartIndex]?.t ?? nowTick).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' })}</span>
+                        <strong>{(chartModel.points[hoveredChartIndex]?.v ?? 0).toLocaleString()} views</strong>
+                      </div>
                     ) : null}
-                  </svg>
-                  {hoveredChartIndex !== null ? (
-                    <div
-                      className="public-chart-tooltip"
-                      style={{
-                        left: `${chartModel.points[hoveredChartIndex]?.x ?? 0}%`,
-                        top: `${Math.max(6, (chartModel.points[hoveredChartIndex]?.y ?? 0) - 8)}%`,
-                      }}
-                    >
-                      <span>{new Date(chartModel.points[hoveredChartIndex]?.t ?? nowTick).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' })}</span>
-                      <strong>{(chartModel.points[hoveredChartIndex]?.v ?? 0).toLocaleString()} views</strong>
-                    </div>
-                  ) : null}
-                </div>
-              </>
-            ) : (
-              <p className="muted">Not enough data for chart yet.</p>
-            )}
-          </div>
-          {chartModel ? (
-            <div className="public-chart-x-axis">
-              {chartModel.xTicks.map((tick, index) => (
-                <span key={`${tick.label}-${index}`}>{tick.label}</span>
-              ))}
+                  </div>
+                </>
+              ) : (
+                <p className="muted">Not enough data for chart yet.</p>
+              )}
             </div>
-          ) : null}
+            {chartModel ? (
+              <div className="public-chart-x-axis">
+                {chartModel.xTicks.map((tick, index) => (
+                  <span key={`${tick.label}-${index}`}>{tick.label}</span>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </article>
 
         <article className="public-panel">

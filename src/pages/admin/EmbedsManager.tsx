@@ -735,19 +735,21 @@ function EmbedsManager() {
               </div>
             </div>
 
-            <div className="embed-insight-chart">
-              {dailySeries.map((item) => (
-                <div key={item.date} className="embed-insight-bar-item">
-                  <div className="embed-insight-bar-wrap">
-                    <div
-                      className="embed-insight-bar"
-                      style={{ height: `${Math.max(6, (item.clicks / maxDailyClicks) * 100)}%` }}
-                      title={`${item.label}: ${item.clicks} clicks`}
-                    />
+            <div className="embed-insight-chart-scroll">
+              <div className="embed-insight-chart">
+                {dailySeries.map((item) => (
+                  <div key={item.date} className="embed-insight-bar-item">
+                    <div className="embed-insight-bar-wrap">
+                      <div
+                        className="embed-insight-bar"
+                        style={{ height: `${Math.max(6, (item.clicks / maxDailyClicks) * 100)}%` }}
+                        title={`${item.label}: ${item.clicks} clicks`}
+                      />
+                    </div>
+                    <span className="embed-insight-bar-label">{item.label}</span>
                   </div>
-                  <span className="embed-insight-bar-label">{item.label}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </Card>
 

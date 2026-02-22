@@ -5,6 +5,7 @@ import { RequireAdmin } from './lib/auth'
 import Embeds from './pages/Embeds'
 import Home from './pages/Home'
 import Milestones from './pages/Milestones'
+import Trending from './pages/Trending'
 import AdminLogin from './pages/admin/AdminLogin'
 import EmbedsManager from './pages/admin/EmbedsManager'
 import MilestonesManager from './pages/admin/MilestonesManager'
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
     element: <PublicLayout />,
     children: [
       { index: true, element: <Home /> },
+      { path: 'trending', element: <Trending /> },
       { path: 'milestones', element: <Milestones /> },
       { path: 'embeds', element: <Embeds /> },
     ],

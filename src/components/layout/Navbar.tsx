@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 
 const links = [
   { to: '/', label: 'Homepage' },
+  { to: '/trending', label: 'Trending' },
   { to: '/milestones', label: 'Milestones' },
   { to: '/embeds', label: 'Embeds' },
 ]

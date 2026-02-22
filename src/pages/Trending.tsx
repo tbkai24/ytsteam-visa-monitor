@@ -76,8 +76,6 @@ function Trending() {
             Watch on YouTube
           </a>
         </h2>
-        <p className="trend-meta">Trending: switch between Overall and Music</p>
-
         <div className="row-space trend-head-row">
           <p className="muted">Current trend from tracked countries</p>
           <button type="button" className="btn btn-ghost" onClick={() => void loadTrending()}>

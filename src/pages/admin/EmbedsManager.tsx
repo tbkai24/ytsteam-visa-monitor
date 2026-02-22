@@ -452,7 +452,66 @@ function EmbedsManager() {
     }))
   }, [filteredEvents, rangeDurationMs, rangeWindow.since, rangeWindow.until])
 
-  const maxDailyClicks = Math.max(1, ...dailySeries.map((item) => item.clicks))
+  const peakDailyClicks = useMemo(
+    () => Math.max(1, ...dailySeries.map((item) => item.clicks)),
+    [dailySeries],
+  )
+
+  const insightChartModel = useMemo(() => {
+    if (dailySeries.length === 0) return null
+
+    const canvasWidth = Math.max(520, dailySeries.length * 52)
+    const canvasHeight = 190
+    const topPad = 14
+    const bottomPad = 28
+    const leftPad = 18
+    const rightPad = 18
+    const plotWidth = Math.max(1, canvasWidth - leftPad - rightPad)
+    const plotHeight = Math.max(1, canvasHeight - topPad - bottomPad)
+    const denom = Math.max(1, dailySeries.length - 1)
+    const maxValue = Math.max(1, ...dailySeries.map((item) => item.clicks))
+
+    const points = dailySeries.map((item, index) => {
+      const x = leftPad + (index / denom) * plotWidth
+      const ratio = item.clicks / maxValue
+      const y = topPad + (1 - ratio) * plotHeight
+      return { x, y, label: item.label, clicks: item.clicks }
+    })
+
+    const createCurvePath = (pts: Array<{ x: number; y: number }>) => {
+      if (pts.length === 0) return ''
+      if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`
+
+      let d = `M ${pts[0].x} ${pts[0].y}`
+      for (let i = 0; i < pts.length - 1; i += 1) {
+        const p0 = i === 0 ? pts[0] : pts[i - 1]
+        const p1 = pts[i]
+        const p2 = pts[i + 1]
+        const p3 = i + 2 < pts.length ? pts[i + 2] : p2
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6
+        const cp1y = p1.y + (p2.y - p0.y) / 6
+        const cp2x = p2.x - (p3.x - p1.x) / 6
+        const cp2y = p2.y - (p3.y - p1.y) / 6
+
+        d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`
+      }
+      return d
+    }
+
+    const linePath = createCurvePath(points)
+    const first = points[0]
+    const last = points[points.length - 1]
+    const areaPath = `${linePath} L ${last.x} ${canvasHeight - bottomPad} L ${first.x} ${canvasHeight - bottomPad} Z`
+
+    return {
+      canvasWidth,
+      canvasHeight,
+      linePath,
+      areaPath,
+      points,
+    }
+  }, [dailySeries])
 
   return (
     <div className="stack-md">
@@ -672,7 +731,7 @@ function EmbedsManager() {
       ) : (
         <>
           <Card className="admin-glass-card">
-            <div className="row-space">
+            <div className="row-space embed-insights-head">
               <h3>Insights</h3>
               <span className="muted">{analyticsLoading ? 'Refreshing...' : 'Click analytics'}</span>
             </div>
@@ -730,26 +789,51 @@ function EmbedsManager() {
                 <p className="public-metric-label">Days</p>
               </div>
               <div className="public-metric-card">
-                <p className="public-metric-value">{maxDailyClicks.toLocaleString()}</p>
+                <p className="public-metric-value">{peakDailyClicks.toLocaleString()}</p>
                 <p className="public-metric-label">Peak/day</p>
               </div>
             </div>
 
             <div className="embed-insight-chart-scroll">
-              <div className="embed-insight-chart">
-                {dailySeries.map((item) => (
-                  <div key={item.date} className="embed-insight-bar-item">
-                    <div className="embed-insight-bar-wrap">
-                      <div
-                        className="embed-insight-bar"
-                        style={{ height: `${Math.max(6, (item.clicks / maxDailyClicks) * 100)}%` }}
-                        title={`${item.label}: ${item.clicks} clicks`}
+              {insightChartModel ? (
+                <div
+                  className="embed-insight-line-canvas"
+                  style={{ width: `${insightChartModel.canvasWidth}px`, height: `${insightChartModel.canvasHeight}px` }}
+                >
+                  <svg
+                    viewBox={`0 0 ${insightChartModel.canvasWidth} ${insightChartModel.canvasHeight}`}
+                    width={insightChartModel.canvasWidth}
+                    height={insightChartModel.canvasHeight}
+                    aria-hidden="true"
+                  >
+                    <path d={insightChartModel.areaPath} className="embed-insight-area" />
+                    <path d={insightChartModel.linePath} className="embed-insight-line" />
+                    {insightChartModel.points.map((point) => (
+                      <circle
+                        key={`${point.label}-${point.x}`}
+                        cx={point.x}
+                        cy={point.y}
+                        r={2.6}
+                        className="embed-insight-dot"
                       />
-                    </div>
-                    <span className="embed-insight-bar-label">{item.label}</span>
+                    ))}
+                  </svg>
+                  <div className="embed-insight-x-axis">
+                    {insightChartModel.points.map((point, index) => (
+                      <span
+                        key={`x-${point.label}-${index}`}
+                        className="embed-insight-x-label"
+                        style={{ width: `${Math.max(1, insightChartModel.canvasWidth / Math.max(1, insightChartModel.points.length))}px` }}
+                        title={`${point.label}: ${point.clicks} clicks`}
+                      >
+                        {point.label}
+                      </span>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <p className="muted">No insight data yet.</p>
+              )}
             </div>
           </Card>
 

@@ -21,6 +21,11 @@ type MonitoringSnapshot = {
   views_per_hour: number | null
 }
 
+type ReachLogStart = {
+  captured_at: string
+  views: number
+}
+
 function ViewsMonitoring() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -38,6 +43,7 @@ function ViewsMonitoring() {
   const [snapshotCapturedAt, setSnapshotCapturedAt] = useState('')
   const [recentRows, setRecentRows] = useState<MonitoringSnapshot[]>([])
   const [allRows, setAllRows] = useState<MonitoringSnapshot[]>([])
+  const [reachLogStart, setReachLogStart] = useState<ReachLogStart | null>(null)
   const [recentLoading, setRecentLoading] = useState(false)
 
   const loadSettings = useCallback(async () => {
@@ -93,6 +99,35 @@ function ViewsMonitoring() {
   useEffect(() => {
     void loadRecentSnapshots()
   }, [loadRecentSnapshots])
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('admin-monitoring-100k-start')
+      if (!raw) return
+      const parsed = JSON.parse(raw) as ReachLogStart
+      if (
+        parsed &&
+        typeof parsed.captured_at === 'string' &&
+        typeof parsed.views === 'number' &&
+        Number.isFinite(parsed.views)
+      ) {
+        setReachLogStart(parsed)
+      }
+    } catch {
+      // ignore malformed storage
+    }
+  }, [])
+
+  useEffect(() => {
+    if (reachLogStart || allRows.length === 0) return
+    const latest = allRows[allRows.length - 1]
+    const baseline: ReachLogStart = {
+      captured_at: latest.captured_at,
+      views: latest.views ?? 0,
+    }
+    setReachLogStart(baseline)
+    window.localStorage.setItem('admin-monitoring-100k-start', JSON.stringify(baseline))
+  }, [allRows, reachLogStart])
 
   const saveRangeSettings = async () => {
     if (!enable1h && !enable24h && !enable7d) {
@@ -234,80 +269,45 @@ function ViewsMonitoring() {
     setSaving(false)
   }
 
-  const estimateRatePerSecond = (rows: Array<{ captured_at: string; views: number }>) => {
-    if (rows.length < 2) return 0
-    const latest = rows[rows.length - 1]
-    const previous = rows[rows.length - 2]
-    const liveDeltaViews = latest.views - previous.views
-    const liveDeltaSeconds = Math.max(
-      1,
-      (new Date(latest.captured_at).getTime() - new Date(previous.captured_at).getTime()) / 1000,
-    )
-    const liveRate = Math.max(0, liveDeltaViews / liveDeltaSeconds)
-    if (liveRate > 0) return liveRate
-
-    for (let i = rows.length - 1; i > 0; i -= 1) {
-      const current = rows[i]
-      const prev = rows[i - 1]
-      const deltaViews = current.views - prev.views
-      const deltaSeconds = Math.max(
-        1,
-        (new Date(current.captured_at).getTime() - new Date(prev.captured_at).getTime()) / 1000,
-      )
-      if (deltaViews > 0) return deltaViews / deltaSeconds
-    }
-    return 0
-  }
-
-  const formatEtaFromRate = (remainingViews: number, ratePerSecond: number) => {
-    if (ratePerSecond <= 0) return 'ETA: waiting update'
-    const seconds = Math.ceil(remainingViews / ratePerSecond)
-    if (seconds < 60) return `ETA: ${seconds}s`
-    if (seconds < 3600) return `ETA: ${Math.ceil(seconds / 60)}m`
-    if (seconds < 86400) return `ETA: ${(seconds / 3600).toFixed(1)}h`
-    return `ETA: ${(seconds / 86400).toFixed(1)}d`
-  }
-
   const hundredKRows = useMemo(() => {
-    const valid = allRows
+    const validAll = allRows
       .map((row) => ({ ...row, views: row.views ?? 0 }))
       .filter((row) => Number.isFinite(row.views))
 
-    if (valid.length === 0) return []
+    if (validAll.length < 2 || !reachLogStart) return []
 
-    const maxViews = valid.reduce((max, row) => Math.max(max, row.views), 0)
-    if (maxViews < 100000) return []
+    const filtered = validAll.filter(
+      (row) => new Date(row.captured_at).getTime() >= new Date(reachLogStart.captured_at).getTime(),
+    )
+    if (filtered.length < 2) return []
+
+    const startViews = reachLogStart.views
+    const nextTarget = Math.ceil((startViews + 1) / 100000) * 100000
+    const maxViews = filtered[filtered.length - 1].views
+    if (maxViews < nextTarget) return []
 
     const targets: number[] = []
-    for (let target = 100000; target <= maxViews; target += 100000) {
+    for (let target = nextTarget; target <= maxViews; target += 100000) {
       targets.push(target)
     }
 
     return targets
       .map((target) => {
-        const crossIndex = valid.findIndex((row, index) => {
-          const prevViews = index > 0 ? valid[index - 1].views : 0
+        const crossIndex = filtered.findIndex((row, index) => {
+          const prevViews = index > 0 ? filtered[index - 1].views : startViews
           return prevViews < target && row.views >= target
         })
-
         if (crossIndex < 0) return null
-
-        const reached = valid[crossIndex]
-        const prev = crossIndex > 0 ? valid[crossIndex - 1] : null
-        const historyUntilPrev = valid.slice(0, crossIndex)
-        const ratePerSecond = estimateRatePerSecond(historyUntilPrev)
-        const remaining = Math.max(0, target - (prev?.views ?? reached.views))
-
+        const reached = filtered[crossIndex]
         return {
           target,
           reachedAt: reached.captured_at,
           reachedViews: reached.views,
-          etaText: remaining <= 0 ? 'Reached' : formatEtaFromRate(remaining, ratePerSecond),
         }
       })
-      .filter((row): row is { target: number; reachedAt: string; reachedViews: number; etaText: string } => row !== null)
+      .filter((row): row is { target: number; reachedAt: string; reachedViews: number } => row !== null)
       .sort((a, b) => b.target - a.target)
-  }, [allRows])
+  }, [allRows, reachLogStart])
 
   return (
     <div className="stack-md">
@@ -437,28 +437,33 @@ function ViewsMonitoring() {
 
             <div className="stack-sm">
               <h3>100k Reach Log</h3>
+              {reachLogStart ? (
+                <p className="muted">
+                  Tracking starts at {new Date(reachLogStart.captured_at).toLocaleString()} (
+                  {reachLogStart.views.toLocaleString()} views)
+                </p>
+              ) : null}
               <div className="table-wrap">
                 <table className="table admin-table">
                   <thead>
                     <tr>
                       <th>Target</th>
                       <th>Reached At</th>
-                      <th>ETA (pre-hit)</th>
                       <th>Views at Capture</th>
                     </tr>
                   </thead>
                   <tbody>
                     {recentLoading ? (
                       <tr>
-                        <td colSpan={4} className="muted">
+                        <td colSpan={3} className="muted">
                           Computing 100k reach log...
                         </td>
                       </tr>
                     ) : null}
                     {!recentLoading && hundredKRows.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="muted">
-                          No 100k milestones reached yet.
+                        <td colSpan={3} className="muted">
+                          No 100k milestones reached yet from current tracking start.
                         </td>
                       </tr>
                     ) : null}
@@ -467,7 +472,6 @@ function ViewsMonitoring() {
                           <tr key={`100k-${row.target}`}>
                             <td>{row.target.toLocaleString()}</td>
                             <td>{new Date(row.reachedAt).toLocaleString()}</td>
-                            <td>{row.etaText}</td>
                             <td>{row.reachedViews.toLocaleString()}</td>
                           </tr>
                         ))

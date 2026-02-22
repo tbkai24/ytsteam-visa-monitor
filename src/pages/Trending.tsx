@@ -76,11 +76,8 @@ function Trending() {
             Watch on YouTube
           </a>
         </h2>
-        <div className="row-space trend-head-row">
+        <div className="trend-head-row">
           <p className="muted">Current trend from tracked countries</p>
-          <button type="button" className="btn btn-ghost" onClick={() => void loadTrending()}>
-            Refresh
-          </button>
         </div>
 
         {lastUpdated ? <p className="muted trend-updated">Updated: {lastUpdated}</p> : null}
